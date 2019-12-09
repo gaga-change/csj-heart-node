@@ -1,0 +1,61 @@
+variables:
+  DOCKER_DRIVER: overlay
+stages:
+  - pack
+  - deploy
+
+before_script:
+  - export IMAGE_TAG=$(echo -en $CI_COMMIT_REF_NAME | tr -c '[:alnum:]_.-' '-')
+  - export IMAGE=$CI_REGISTRY_IMAGE:$IMAGE_TAG
+  
+pack:
+  stage: pack
+  script:
+    - docker build --pull -t "$IMAGE" .
+    - docker push "$IMAGE"
+  only:
+    - tags
+
+发布:
+  image: gempesaw/curl-jq
+  stage: deploy
+  variables:
+    GIT_STRATEGY: none
+  dependencies: []
+  script:
+    - export API=$CI_RANCHER_POD_API
+    - curl -u "$CI_RANCHER_TOKEN" -o temp.json $API
+    - export CONTAINER=$(cat temp.json | jq --compact-output '.containers[0]' | jq --compact-output 'to_entries |  map(if .key == "image" then . + {"value":"'${IMAGE}'"} else . end) | from_entries')
+    - curl  -u "$CI_RANCHER_TOKEN" -X PUT -H 'Accept:application/json' -H 'Content-Type:application/json' -d '{"containers":['${CONTAINER}']}' $API
+  only:
+    - tags
+
+# 预发布环境更新:
+#   image: gempesaw/curl-jq
+#   stage: deploy
+#   variables:
+#     GIT_STRATEGY: none
+#   dependencies: []
+#   script:
+#     - export API=$CI_RANCHER_POD_API-rel
+#     - curl -u "$CI_RANCHER_TOKEN" -o temp.json $API
+#     - export CONTAINER=$(cat temp.json | jq --compact-output '.containers[0]' | jq --compact-output 'to_entries |  map(if .key == "image" then . + {"value":"'${IMAGE}'"} else . end) | from_entries')
+#     - curl  -u "$CI_RANCHER_TOKEN" -X PUT -H 'Accept:application/json' -H 'Content-Type:application/json' -d '{"containers":['${CONTAINER}']}' $API
+#   only:
+#     - tags
+#   when: manual
+
+# 正式环境更新:
+#   image: gempesaw/curl-jq
+#   stage: deploy
+#   variables:
+#     GIT_STRATEGY: none
+#   dependencies: []
+#   script:
+#     - export API=$CI_RANCHER_POD_API-prod
+#     - curl -u "$CI_RANCHER_TOKEN" -o temp.json $API
+#     - export CONTAINER=$(cat temp.json | jq --compact-output '.containers[0]' | jq --compact-output 'to_entries |  map(if .key == "image" then . + {"value":"'${IMAGE}'"} else . end) | from_entries')
+#     - curl  -u "$CI_RANCHER_TOKEN" -X PUT -H 'Accept:application/json' -H 'Content-Type:application/json' -d '{"containers":['${CONTAINER}']}' $API
+#   only:
+#     - tags
+#   when: manual

@@ -3,7 +3,9 @@ const io = require('socket.io-client')
 const log = console.log
 const roomSet = new Set()
 const tickMap = new Map()
-const socket = io('http://127.0.0.1:7001/', {
+const socketUrl = process.env.SOCKET_URL || 'http://127.0.0.1:7001/'
+
+const socket = io(socketUrl, {
   query: {
     room: 'heart',
     userId: 'heart',
@@ -23,6 +25,7 @@ socket.on('connect', () => {
 
 socket.on('online', msg => {
   log('#online,', msg);
+  // 获取所有在线客户端
   Object.keys(msg.clientsDetail).forEach(id => {
     let item = msg.clientsDetail[id]
     roomSet.add(item.room)
@@ -37,7 +40,7 @@ socket.on('online', msg => {
     });
     getVersion(room)
   })
-  console.log('rooms: ', roomSet)
+  log('rooms: ', roomSet)
 });
 
 function getVersion(room) {
@@ -60,6 +63,7 @@ function getVersion(room) {
   tickMap.set(room, tick)
 }
 
+// 连入连出 监听
 socket.on('update room', msg => {
   const {room, clients, action} = msg
   if (action === 'join') {
