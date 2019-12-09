@@ -4,6 +4,7 @@ const log = console.log
 const roomSet = new Set()
 const tickMap = new Map()
 const socketUrl = process.env.SOCKET_URL || 'http://127.0.0.1:7001/'
+// const socketUrl = process.env.SOCKET_URL || 'http://csj-center-egg.shop.csj361.com/'
 
 const socket = io(socketUrl, {
   query: {
@@ -20,7 +21,6 @@ const socket = io(socketUrl, {
  */
 socket.on('connect', () => {
   log('已连接')
-
 })
 
 socket.on('online', msg => {
@@ -80,7 +80,7 @@ socket.on('update room', msg => {
 })
 
 socket.on('disconnect', msg => {
-  // tick && clearInterval(tick)
+  tick && clearInterval(tick)
   log('#disconnect', msg);
 });
 
