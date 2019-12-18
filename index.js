@@ -49,8 +49,8 @@ function getVersion(room) {
   }
   const tick = setInterval(async () => {
     try {
-      let { data: version } = await axios.get(`http://${room}/version.txt`)
       log(`请求：http://${room}/version.txt`, new Date())
+      let { data: version } = await axios.get(`http://${room}/version.txt`)
       version = version.trim()
       socket.emit('exchange', {
         target: room,
@@ -60,7 +60,7 @@ function getVersion(room) {
         },
       });
     } catch (err) {
-      log('请求异常', err.toString())
+      log(`请求异常（room:${room}）`, err.toString())
     }
   }, 5000)
   tickMap.set(room, tick)
