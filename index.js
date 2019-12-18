@@ -44,6 +44,9 @@ socket.on('online', msg => {
 });
 
 function getVersion(room) {
+  if (tickMap.get(room)) { // 如果定时器已存在，则不添加
+    return
+  }
   const tick = setInterval(async () => {
     try {
       let { data: version } = await axios.get(`http://${room}/version.txt`)
@@ -65,14 +68,13 @@ function getVersion(room) {
 
 // 连入连出 监听
 socket.on('update room', msg => {
-  const {room, clients, action} = msg
+  const { room, clients, action } = msg
   if (action === 'join') {
     if (!roomSet.has(room)) {
       roomSet.add(room)
       getVersion(room)
-
     }
-  } else if (clients.length ===0) {
+  } else if (clients.length === 0) {
     roomSet.delete(room)
     clearInterval(tickMap.get(room))
     tickMap.delete(room)
