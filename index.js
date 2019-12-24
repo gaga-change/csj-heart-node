@@ -32,12 +32,12 @@ socket.on('online', msg => {
   })
   roomSet.delete('heart')
   roomSet.forEach(room => {
-    socket.emit('exchange', {
-      target: room,
-      payload: {
-        msg: 'hreat 连接',
-      },
-    });
+    // socket.emit('exchange', {
+    //   target: room,
+    //   payload: {
+    //     msg: 'hreat 连接',
+    //   },
+    // });
     getVersion(room)
   })
   log('rooms: ', roomSet)
