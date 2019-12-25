@@ -1,15 +1,16 @@
 const axios = require('axios')
 const io = require('socket.io-client')
 const log = console.log
-const roomSet = new Set()
-const tickMap = new Map()
-const socketUrl = process.env.SOCKET_URL || 'http://127.0.0.1:7001/'
+const roomMap = new Map() // 房间列表
+const tickMap = new Map() // 循环标记
+const socketUrl = process.env.SOCKET_URL || 'http://127.0.0.1:7001/sys'
 // const socketUrl = process.env.SOCKET_URL || 'http://csj-center-egg.shop.csj361.com/'
 
 const socket = io(socketUrl, {
   query: {
     room: 'heart',
     userId: 'heart',
+    username: 'heart'
   },
 })
 /**
@@ -23,25 +24,44 @@ socket.on('connect', () => {
   log('已连接')
 })
 
-socket.on('online', msg => {
-  log('#online,', msg);
-  // 获取所有在线客户端
-  Object.keys(msg.clientsDetail).forEach(id => {
-    let item = msg.clientsDetail[id]
-    roomSet.add(item.room)
+// 所有在线客户端
+socket.on('user all online', msg => {
+  const { clients } = msg
+  clients.forEach(({ room, clientId, version }) => {
+    if (!roomMap.has(room)) {
+      roomMap.set(room, new Map())
+    }
+    let clientVersion = roomMap.get(room)
+    clientVersion.set(clientId, version)
   })
-  roomSet.delete('heart')
-  roomSet.forEach(room => {
-    // socket.emit('exchange', {
-    //   target: room,
-    //   payload: {
-    //     msg: 'hreat 连接',
-    //   },
-    // });
+  roomMap.forEach((val, room) => {
     getVersion(room)
   })
-  log('rooms: ', roomSet)
-});
+  log('#allOnline: ', roomMap)
+})
+
+// 监听每个房间人员变动
+socket.on('user room online', msg => {
+  const { clients, room, client, action } = msg
+  if (clients.length === 0) {
+    roomMap.delete(room)
+    clearInterval(tickMap.get(room))
+    tickMap.delete(room)
+  } else {
+    if (action === 'join') { // 加入
+      if (!roomMap.has(room)) {
+        roomMap.set(room, new Map())
+        getVersion(room)
+      }
+      let clientVersion = roomMap.get(room)
+      clientVersion.set(client.clientId, client.version)
+    } else { // 离开
+      let clientVersion = roomMap.get(room)
+      clientVersion.delete(client.clientId)
+    }
+  }
+  log('#roomUpdate: ', roomMap)
+})
 
 function getVersion(room) {
   if (tickMap.get(room)) { // 如果定时器已存在，则不添加
@@ -52,13 +72,23 @@ function getVersion(room) {
       log(`请求：http://${room}/version.txt`, new Date())
       let { data: version } = await axios.get(`http://${room}/version.txt`)
       version = version.trim()
-      socket.emit('exchange', {
-        target: room,
-        payload: {
-          msg: '版本号：',
-          version: version
-        },
-      });
+      let clientVersionMap = roomMap.get(room)
+      if (!clientVersionMap) return
+      let update = false
+      clientVersionMap.forEach((v, clientId) => {
+        if (v !== version) {
+          update = true
+          clientVersionMap.set(clientId, version)
+          socket.emit('exchange', {
+            target: clientId,
+            payload: {
+              msg: '新版本号',
+              version: version
+            },
+          });
+        }
+      })
+      if (update) log('#versionUpdate: ', roomMap)
     } catch (err) {
       log(`请求异常（room:${room}）`, err.toString())
     }
@@ -66,23 +96,12 @@ function getVersion(room) {
   tickMap.set(room, tick)
 }
 
-// 连入连出 监听
-socket.on('update room', msg => {
-  const { room, clients, action } = msg
-  if (action === 'join') {
-    if (!roomSet.has(room)) {
-      roomSet.add(room)
-      getVersion(room)
-    }
-  } else if (clients.length === 0) {
-    roomSet.delete(room)
-    clearInterval(tickMap.get(room))
-    tickMap.delete(room)
-  }
-})
-
 socket.on('disconnect', msg => {
-  tick && clearInterval(tick)
+  tickMap.forEach((val) => {
+    clearInterval(val)
+  })
+  roomMap.clear()
+  tickMap.clear()
   log('#disconnect', msg);
 });
 
