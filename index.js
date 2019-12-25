@@ -71,6 +71,7 @@ function getVersion(room) {
     try {
       log(`请求：http://${room}/version.txt`, new Date())
       let { data: version } = await axios.get(`http://${room}/version.txt`)
+      if (!version) return log(`请求异常 version 不存在: ${version}`)
       version = version.trim()
       let clientVersionMap = roomMap.get(room)
       if (!clientVersionMap) return
