@@ -82,6 +82,7 @@ function getVersion(room) {
           clientVersionMap.set(clientId, version)
           socket.emit('exchange', {
             target: clientId,
+            action: 'version update',
             payload: {
               msg: '新版本号',
               version: version
