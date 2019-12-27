@@ -5,7 +5,7 @@ const domainTurn = require('./domainTurn')
 const log = console.log
 const roomMap = new Map() // 房间列表
 const tickMap = new Map() // 循环标记
-const socketUrl = process.env.SOCKET_URL || 'http://127.0.0.1:7001/sys'
+const { socketUrl } = require('./config')
 // const socketUrl = process.env.SOCKET_URL || 'http://csj-center-egg.shop.csj361.com/'
 
 const socket = io(socketUrl, {
@@ -23,7 +23,7 @@ const socket = io(socketUrl, {
  *   - 3. 向每个房间推送房间内需要的版本信息
  */
 socket.on('connect', () => {
-  log('已连接')
+  log('socket 已连接')
 })
 
 // 所有在线客户端
