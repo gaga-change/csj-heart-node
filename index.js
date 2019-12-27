@@ -42,6 +42,7 @@ socket.on('user all online', msg => {
   })
   roomMap.forEach((val, room) => {
     getVersion(room)
+    controller.saveRoomVersion(room, roomClients[room][0].version)
     controller.saveRoomOnline(room, roomClients[room], meta.timestamp)
   })
   log('#allOnline: ', roomMap)
@@ -57,6 +58,7 @@ socket.on('user room online', msg => {
     tickMap.delete(room)
   } else {
     if (action === 'join') { // 加入
+      controller.saveRoomVersion(room, client.version)
       if (!roomMap.has(room)) {
         roomMap.set(room, new Map())
         getVersion(room)
