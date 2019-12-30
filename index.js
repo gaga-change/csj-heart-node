@@ -36,7 +36,7 @@ socket.on('user all online', msg => {
       roomMap.set(room, new Map())
     }
     let clientVersion = roomMap.get(room)
-    clientVersion.set(clientId, version)
+    clientVersion.set(clientId, client)
     roomClients[room] = (roomClients[room] || [])
     roomClients[room].push(client)
   })
@@ -50,26 +50,26 @@ socket.on('user all online', msg => {
 
 // 监听每个房间人员变动
 socket.on('user room online', msg => {
-  const { clients, room, client, action, meta } = msg
-  controller.saveRoomOnline(room, clients, meta.timestamp)
-  if (clients.length === 0) {
-    roomMap.delete(room)
-    clearInterval(tickMap.get(room))
-    tickMap.delete(room)
-  } else {
-    if (action === 'join') { // 加入
-      controller.saveRoomVersion(room, client.version)
-      if (!roomMap.has(room)) {
-        roomMap.set(room, new Map())
-        getVersion(room)
-      }
-      let clientVersion = roomMap.get(room)
-      clientVersion.set(client.clientId, client.version)
-    } else { // 离开
-      let clientVersion = roomMap.get(room)
-      clientVersion.delete(client.clientId)
+  const { room, client, action, meta } = msg
+  if (action === 'join') { // 加入
+    controller.saveRoomVersion(room, client.version)
+    if (!roomMap.has(room)) {
+      roomMap.set(room, new Map())
+      getVersion(room)
+    }
+    let clientVersion = roomMap.get(room)
+    clientVersion.set(client.clientId, client)
+  } else { // 离开
+    let clientVersion = roomMap.get(room)
+    clientVersion.delete(client.clientId)
+    if (clientVersion.size === 0) {
+      roomMap.delete(room)
+      clearInterval(tickMap.get(room))
+      tickMap.delete(room)
     }
   }
+  controller.saveRoomOnline(room, [...(roomMap.get(room) || new Map()).values()], meta.timestamp)
+
   log('#roomUpdate: ', roomMap)
 })
 
@@ -91,16 +91,17 @@ function getVersion(room) {
       let clientVersionMap = roomMap.get(room)
       if (!clientVersionMap) return
       let update = false
-      clientVersionMap.forEach((v, clientId) => {
-        if (v !== version) {
+      clientVersionMap.forEach((client, clientId) => {
+        if (client.version !== version) {
           update = true
-          clientVersionMap.set(clientId, version)
+          client.version = version
+          // clientVersionMap.set(clientId, version)
           socket.emit('exchange', {
             target: clientId,
             action: 'version update',
             payload: {
               msg: '新版本号',
-              version: version
+              version
             },
           });
         }
