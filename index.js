@@ -87,7 +87,16 @@ function getVersion(room) {
       log(`请求：http://${domain}/version.txt`, new Date())
       let { data: version } = await axios.get(`http://${domain}/version.txt`)
       if (!version) return log(`请求异常 version 不存在: ${version}`)
-      version = version.trim()
+      if (typeof version === 'number') {
+        let temp = version + ''
+        if (temp.length === 1) { // 整数处理
+          version = version.toFixed(1)
+        } else { // 带小数数字处理
+          version = temp
+        }
+      } else {
+        version = version.trim()
+      }
       let clientVersionMap = roomMap.get(room)
       if (!clientVersionMap) return
       let update = false
